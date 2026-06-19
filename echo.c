@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,17 +49,40 @@ int process_char(char **c) {
   (*c) = (*c) + 1;
   return value;
 }
-
+void print_input(int argc, char ***argv) {
+  if (optind == 1)
+    return;
+  for (; optind < argc; optind++) {
+    char *arg = (*argv)[optind];
+    while (*arg != '\0') {
+      int output = process_char(&arg);
+      if (output == -1) {
+        break;
+      }
+      printf("%c", output);
+    }
+  }
+}
 int main(int argc, char **argv) {
-  int size = BUFFER_SIZE;
-  char *buffer = (char *)malloc(size);
   int opt;
-  size_t index = 0;
+  opterr = 0;
+  bool entered = false;
   while ((opt = getopt(argc, argv, "neE")) != -1) {
     switch (opt) {
-    case 'n':
-      for (; optind < argc; optind++) {
-        char *arg = argv[optind];
+    case '?':
+      if (entered)
+        break;
+      char *arg = argv[1];
+      while (*arg != '\0') {
+        int output = process_char(&arg);
+        if (output == -1) {
+          break;
+        }
+        printf("%c", output);
+      }
+      printf(" ");
+      for (size_t i = 2; i < argc; i++) {
+        arg = (argv)[i];
         while (*arg != '\0') {
           int output = process_char(&arg);
           if (output == -1) {
@@ -67,6 +91,12 @@ int main(int argc, char **argv) {
           printf("%c", output);
         }
       }
+      printf("\n");
+      entered = true;
+      break;
+    case 'n':
+      if (!entered)
+        print_input(argc, &argv);
       break;
     case 'e':
 
@@ -82,7 +112,6 @@ int main(int argc, char **argv) {
       break;
     }
   }
-  free(buffer);
 
   return 0;
 }
