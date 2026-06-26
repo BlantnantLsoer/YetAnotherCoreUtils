@@ -1,14 +1,53 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 bool newline_argument = false;
 bool escape_argument = true;
 int index_argc = 1;
 
-int process_switch_statement(char c) {
+int process_switch_statement(char **c) {
   int value;
-  switch (c) {
+  char character = **c;
+
+  // Process hex
+  if (character == 'x') {
+    char buffer[3];
+    buffer[2] = '\0';
+    for (int i = 0; i < 3; i++) {
+      buffer[i] = (*c + 1)[i];
+    }
+    char *endptr = NULL;
+    long v = strtol(buffer, &endptr, 16);
+    if (endptr == buffer) {
+      // no hex digit
+      *c = *c + 1;
+      return -2;
+    }
+    value = (int)v;
+    *c = *c + 2;
+    return value;
+  }
+
+  // Process octal
+  if (character == '0') {
+    char buffer[4];
+    for (int i = 0; i < 4; i++) {
+      buffer[i] = (*c + 1)[i];
+    }
+    char *endptr = NULL;
+    long v = strtol(buffer, &endptr, 16);
+    if (endptr == buffer) {
+      // no octal digit
+      *c = *c + 1;
+      return -2;
+    }
+    *c = *c + 3;
+    value = (int)v;
+    return value;
+  }
+  switch (character) {
   case '\\':
     value = '\\';
     break;
@@ -58,8 +97,10 @@ int process_char(char **c) {
   (*c) = (*c) + 1;
   // It is formatted AND a backslash
   // Parse which escape character
-  value = process_switch_statement(**c);
-
+  value = process_switch_statement(c);
+  if (value == -2) {
+    value = process_char(c);
+  }
   // Advance string after finishing parsing
   (*c) = (*c) + 1;
   return value;
