@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,45 +8,64 @@ bool newline_argument = false;
 bool escape_argument = true;
 int index_argc = 1;
 
+int to_hex(char c) {
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  if ('A' <= c && c <= 'F')
+    return c - 'A' + 10;
+  return -1;
+}
+
 int process_switch_statement(char **c) {
   int value;
   char character = **c;
 
   // Process hex
   if (character == 'x') {
-    char buffer[3];
-    buffer[2] = '\0';
-    for (int i = 0; i < 3; i++) {
-      buffer[i] = (*c + 1)[i];
-    }
-    char *endptr = NULL;
-    long v = strtol(buffer, &endptr, 16);
-    if (endptr == buffer) {
-      // no hex digit
+    character = *(*c + 1);
+    char character_two = *(*c + 2);
+    if (!isxdigit(character))
+      return '\0';
+    if (!isxdigit(character_two)) {
       *c = *c + 1;
-      return -2;
+      return to_hex(character);
     }
-    value = (int)v;
     *c = *c + 2;
-    return value;
+    char buf[3];
+    buf[2] = '\0';
+    buf[0] = character;
+    buf[1] = character_two;
+    return strtol(buf, NULL, 16);
   }
 
   // Process octal
   if (character == '0') {
-    char buffer[4];
-    for (int i = 0; i < 4; i++) {
-      buffer[i] = (*c + 1)[i];
+    char buf[4];
+    character = *(*c + 1);
+    char character_two = *(*c + 2);
+    char character_three = *(*c + 3);
+    if (!((character - '0' >= 0 && character - '0' <= 7))) {
+      return '\0';
     }
-    char *endptr = NULL;
-    long v = strtol(buffer, &endptr, 16);
-    if (endptr == buffer) {
-      // no octal digit
+    if (!((character_two - '0' >= 0 && character_two - '0' <= 7))) {
       *c = *c + 1;
-      return -2;
+      return character - '0';
+    }
+    if (!((character_three - '0' >= 0 && character_three - '0' <= 7))) {
+      *c = *c + 2;
+      buf[2] = '\0';
+      buf[0] = character;
+      buf[1] = character_two;
+      return strtol(buf, NULL, 8);
     }
     *c = *c + 3;
-    value = (int)v;
-    return value;
+    buf[3] = '\0';
+    buf[0] = character;
+    buf[1] = character_two;
+    buf[2] = character_three;
+    return strtol(buf, NULL, 8);
   }
   switch (character) {
   case '\\':
@@ -98,9 +118,6 @@ int process_char(char **c) {
   // It is formatted AND a backslash
   // Parse which escape character
   value = process_switch_statement(c);
-  if (value == -2) {
-    value = process_char(c);
-  }
   // Advance string after finishing parsing
   (*c) = (*c) + 1;
   return value;
